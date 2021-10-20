@@ -121,7 +121,7 @@ def get_duration(inPath, logFile=None):
     return int(float(result))
 
 
-def transition_videos(inputList, glslPath, logFile=None):
+def transition_videos(inputList, glslPath, logFile=None, transDuration=1):
     def getComplexCmd():
         complexCmd = " -filter_complex \""
         for (index, input) in enumerate(inputList):
@@ -140,16 +140,18 @@ def transition_videos(inputList, glslPath, logFile=None):
                 complexCmd = \
                     complexCmd + \
                     "[" + str(index - 1) + "trim1][" + str(index) + "trim0]" + \
-                    "gltransition=duration=2:source=" + glslPath + "[" + str(index) + "trans]; "
+                    "gltransition=duration=" + str(transDuration) + ":source=" + glslPath + "[" + str(
+                        index) + "trans]; "
 
         for (index, input) in enumerate(inputList):
             # concat eg:[v0_split0_trim][transitions0][v1_split1_trim_pts]concat=n=3[o]"
             if index == 0:
                 complexCmd = complexCmd + "[" + str(index) + "trim0]"
             else:
-                complexCmd = complexCmd + "[" + str(index) + "trans]" + "[" + str(index) + "trim1]"
+                complexCmd = complexCmd + "[" + str(index) + "trans]"
             if index == (len(inputList) - 1):
                 # 最后一个
+                complexCmd = complexCmd + "[" + str(index) + "trim1]"
                 complexCmd = complexCmd + "concat=n=" + str(len(inputList) + 1) + "[output]"
         return complexCmd + "\""
 
@@ -160,8 +162,10 @@ def transition_videos(inputList, glslPath, logFile=None):
         inputCmd = inputCmd + " -i " + input
     cmd = ffmpeg + inputCmd + complexCmd + " -map \"[output]:0\" -c:v libx264 -y " + outPutPath
     print("cmd=" + cmd)
-    subprocess.getstatusoutput(cmd)
+    code, result = subprocess.getstatusoutput(cmd)
     print("执行结束 " + outPutPath)
+    if code != 0:
+        print(result)
 
     if logFile is not None:
         msg = ""
@@ -182,5 +186,6 @@ if __name__ == '__main__':
     logFile = open("output/log.txt", "w+")
 
     for glsl in glsls:
-        transition_videos(["input/1.mp4", "input/2.mp4"], glsl, logFile)
+        transition_videos(["input/1.mp4", "input/0.mp4", "input/2.mp4"], glsl, logFile, 2)
+
     logFile.close()
